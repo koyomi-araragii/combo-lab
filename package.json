@@ -1,0 +1,14 @@
+{
+  "name": "combo-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "万物合成实验室 - AI 组合生成小游戏",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "dev": "node --env-file-if-exists=.env server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

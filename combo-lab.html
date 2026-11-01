@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>万物合成实验室 · Combo Lab</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #faf7f0;
+    color: #2d3436;
+    min-height: 100vh;
+    padding: 20px 16px 60px;
+    overflow-x: hidden;
+  }
+  .container { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+  header h1 .accent { color: #6c5ce7; }
+  header p { color: #888; margin-top: 8px; font-size: 14px; }
+
+  .config-tip {
+    background: #fff3cd; border: 1px solid #ffeaa7;
+    padding: 10px 14px; border-radius: 10px;
+    font-size: 12px; color: #856404; margin-bottom: 20px;
+    display: none;
+  }
+
+  /* 合成区 */
+  .combo-area {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin-bottom: 16px;
+  }
+  .slot {
+    flex: 1; min-width: 0; background: #fff; border: 2px dashed #dfe6e9;
+    border-radius: 16px; padding: 20px 12px; text-align: center;
+    min-height: 130px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px;
+    transition: all .3s; cursor: pointer;
+  }
+  .slot.a { border-color: #a8d8b9; background: #f0faf3; }
+  .slot.b { border-color: #c4b5e8; background: #f5f1fc; }
+  .slot.active { box-shadow: 0 0 0 3px rgba(108,92,231,.3); }
+  .slot.shake { animation: shake .5s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+  .slot.drop-hover {
+    border-style: solid; border-color: #6c5ce7;
+    background: #f3efff;
+    box-shadow: 0 0 0 4px rgba(108,92,231,.18), 0 8px 20px rgba(108,92,231,.15);
+    transform: translateY(-2px);
+  }
+  .slot.drop-hover .emoji { transform: scale(1.15); }
+  .slot.dropped { animation: slotDrop .4s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes slotDrop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  .slot .emoji { font-size: 48px; line-height: 1; transition: transform .3s; }
+  .slot-input {
+    width: 100%; min-width: 0;
+    border: none; background: transparent; outline: none;
+    text-align: center; font: inherit;
+    font-size: 16px; font-weight: 700; color: inherit;
+    padding: 2px 0; cursor: text;
+  }
+  .slot-input::placeholder { color: #aaa; font-size: 13px; font-weight: 400; }
+  .slot:focus-within { box-shadow: 0 0 0 3px rgba(108,92,231,.3); }
+  .plus { font-size: 28px; font-weight: 900; color: #b2bec3; }
+
+  /* 按钮行 */
+  .btn-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  #combineBtn {
+    flex: 1; padding: 16px;
+    background: #6c5ce7; color: #fff;
+    border: none; border-radius: 14px;
+    font-size: 18px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 0 #5a4bd1;
+    transition: all .1s;
+  }
+  #combineBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #5a4bd1; }
+  #combineBtn:disabled { background: #b2bec3; box-shadow: 0 4px 0 #95a5a6; cursor: not-allowed; }
+  #diceBtn {
+    padding: 16px 18px;
+    background: #fff; color: #6c5ce7;
+    border: 2px solid #6c5ce7; border-radius: 14px;
+    font-size: 20px; cursor: pointer;
+    transition: all .1s;
+  }
+  #diceBtn:active { transform: scale(.95); }
+
+  /* 结果卡片 */
+  #resultCard {
+    border-radius: 18px; padding: 24px;
+    margin-bottom: 20px; display: none;
+    animation: pop .5s cubic-bezier(.2,1.4,.4,1);
+    position: relative;
+  }
+  @keyframes pop {
+    0% { transform: scale(.5) rotate(-5deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  #resultCard.rarity-common    { background: linear-gradient(135deg, #ffe8d6, #ffd3b6); }
+  #resultCard.rarity-rare      { background: linear-gradient(135deg, #d6ecff, #b3d9ff); }
+  #resultCard.rarity-epic      { background: linear-gradient(135deg, #e8d6ff, #d4b3ff); }
+  #resultCard.rarity-legendary { background: linear-gradient(135deg, #fff9c4, #ffe082); box-shadow: 0 0 30px rgba(255,193,7,.5); }
+  #resultCard .rarity-badge {
+    position: absolute; top: 12px; right: 12px;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 10px;
+    background: rgba(0,0,0,.15); color: #fff;
+  }
+  #resultCard .res-emoji {
+    font-size: 72px; text-align: center;
+    animation: bounce 1s infinite alternate;
+  }
+  @keyframes bounce {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-8px); }
+  }
+  #resultCard .res-name { text-align: center; font-size: 26px; font-weight: 900; margin: 8px 0 16px; }
+  #resultCard .res-row {
+    background: rgba(255,255,255,.7); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 8px; font-size: 14px;
+  }
+  #resultCard .res-row b { color: #d35400; margin-right: 6px; }
+  #shareBtn {
+    width: 100%; padding: 10px; margin-top: 8px;
+    background: rgba(255,255,255,.8); border: none; border-radius: 10px;
+    color: #2d3436; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  #shareBtn:hover { background: #fff; }
+
+  /* 炼金中遮罩 */
+  #alchemyOverlay {
+    position: fixed; inset: 0;
+    background: rgba(20,10,40,.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  #alchemyOverlay.show { display: flex; }
+  .alchemy-box { text-align: center; color: #fff; }
+  .alchemy-circle {
+    width: 100px; height: 100px; margin: 0 auto 20px;
+    border: 4px solid rgba(255,255,255,.2);
+    border-top-color: #ffd700;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .alchemy-text { font-size: 18px; font-weight: 600; min-height: 28px; }
+  .alchemy-sub { font-size: 13px; color: rgba(255,255,255,.6); margin-top: 8px; }
+
+  /* 预设 */
+  .section-title { font-size: 14px; font-weight: 700; color: #636e72; margin: 24px 0 12px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset-chip {
+    background: #fff; border: 1px solid #dfe6e9;
+    padding: 8px 14px; border-radius: 20px;
+    font-size: 14px; cursor: grab; transition: all .15s;
+    user-select: none; -webkit-user-drag: element;
+  }
+  .preset-chip:hover { border-color: #6c5ce7; color: #6c5ce7; }
+  .preset-chip:active { cursor: grabbing; }
+  .preset-chip.dragging {
+    opacity: .4; border-style: dashed;
+    border-color: #6c5ce7; color: #6c5ce7;
+  }
+  .pick-hint { font-size: 11px; font-weight: 400; color: #b2bec3; margin-left: 6px; }
+
+  /* 图鉴 */
+  .dex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .dex-item {
+    background: #fff; border-radius: 12px; padding: 12px;
+    border: 1px solid #f0f0f0; cursor: pointer; transition: all .15s;
+    position: relative; overflow: hidden;
+  }
+  .dex-item:hover { border-color: #6c5ce7; transform: translateY(-2px); }
+  .dex-item.rarity-rare      { border-left: 4px solid #4a90e2; }
+  .dex-item.rarity-epic      { border-left: 4px solid #9b59b6; }
+  .dex-item.rarity-legendary { border-left: 4px solid #f39c12; background: #fffde7; }
+  .dex-item .dex-emoji { font-size: 32px; }
+  .dex-item .dex-name { font-weight: 700; font-size: 14px; margin: 4px 0; }
+  .dex-item .dex-meta { font-size: 11px; color: #999; }
+  .empty { color: #bbb; font-size: 13px; text-align: center; padding: 20px; grid-column: span 2; }
+
+  /* 页脚 credits */
+  footer {
+    text-align: center; margin-top: 40px;
+    font-size: 12px; color: #bbb;
+  }
+  footer .heart { color: #e74c3c; }
+
+  /* 飘出来的粒子 */
+  .particle {
+    position: fixed; pointer-events: none;
+    font-size: 20px; z-index: 50;
+    animation: floatUp 1.5s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-200px) scale(1.5); }
+  }
+</style>
+</head>
+<body>
+
+<!-- 炼金中遮罩 -->
+<div id="alchemyOverlay">
+  <div class="alchemy-box">
+    <div class="alchemy-circle"></div>
+    <div class="alchemy-text" id="alchemyText">正在搅拌坩埚...</div>
+    <div class="alchemy-sub" id="alchemySub">combo lab · making magic</div>
+  </div>
+</div>
+
+<div class="container">
+  <header>
+    <h1>万物<span class="accent">合成</span>实验室</h1>
+    <p>combine anything, discover everything ✨</p>
+  </header>
+
+  <div class="config-tip" id="configTip">
+    ⚠️ 请双击 start.bat 启动本地代理，然后访问 http://127.0.0.1:8787
+  </div>
+
+  <div class="combo-area">
+    <div class="slot a" id="slotA">
+      <div class="emoji" id="emojiA">❓</div>
+      <input class="slot-input" id="inputA" type="text" placeholder="选一个元素" autocomplete="off">
+    </div>
+    <div class="plus">+</div>
+    <div class="slot b" id="slotB">
+      <div class="emoji" id="emojiB">❓</div>
+      <input class="slot-input" id="inputB" type="text" placeholder="选一个元素" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button id="combineBtn">✨ 开始合成！</button>
+    <button id="diceBtn" title="随机两个元素">🎲</button>
+  </div>
+
+  <div id="resultCard" class="rarity-common">
+    <div class="rarity-badge" id="rarityBadge">普通</div>
+    <div class="res-emoji" id="resEmoji">🎉</div>
+    <div class="res-name" id="resName">合成物名字</div>
+    <div class="res-row"><b>外观</b><span id="resLook"></span></div>
+    <div class="res-row"><b>能力</b><span id="resAbility"></span></div>
+    <div class="res-row"><b>一句话</b><span id="resFact"></span></div>
+    <button id="shareBtn">📋 复制这条合成，发朋友圈</button>
+  </div>
+
+  <div class="section-title">🎲 快速点选 <span class="pick-hint">点击填入当前框，或拖进左右合成框</span></div>
+  <div class="presets" id="presetList"></div>
+
+  <div class="section-title">📖 我的图鉴 <span id="dexCount" style="color:#aaa;font-weight:400"></span></div>
+  <div class="dex-grid" id="dexList"></div>
+
+  <footer>
+    made with <span class="heart">♥</span> at HACK DAY · 11.01 · 西电长安
+  </footer>
+</div>
+
+<script>
+/* ============================================
+ * 🔧 密钥只放在 .env / Vercel 环境变量，不要写进前端
+ * ============================================ */
+const BASE_URL = "/api"; // 由 server.mjs 转发，避免浏览器 CORS
+const MODEL    = "deepseek-v4.1-flash";
+/* ============================================ */
+/* ✏️ 顺手把下面这里改成你们的队名，会显示在页脚和分享文案里 */
+const TEAM_NAME = "合成大队";
+/* ============================================ */
+
+// 炼金时轮播的文案（让等待不无聊）
+const ALCHEMY_LINES = [
+  "正在搅拌坩埚...",
+  "元素们在握手...",
+  "正在召唤魔法...",
+  "检查化学反应...",
+  "有点烫，吹一吹...",
+  "结果马上出锅...",
+  "正在命名新生物..."
+];
+
+// 预设元素
+const PRESETS = [
+  "🐱 猫","🐶 狗","☕ 咖啡","📖 书","🌙 月亮","⭐ 星星",
+  "☁️ 云","🤖 机器人","🍕 披萨","🌸 花","🌲 树","🎸 吉他",
+  "🍰 蛋糕","🔑 钥匙","🎈 气球","🔥 火","💧 水","💨 风",
+  "🪨 石头","💡 灯泡","🐉 龙","🌈 彩虹","🎩 帽子","⌨️ 键盘",
+  "🍜 泡面","📱 手机","🛏️ 床","🎧 耳机"
+];
+
+// 🥚 彩蛋组合：key 是 "a|b"（小写），命中直接返回预设结果，不调 API
+// 现场评委输入这些词会有惊喜，西电/黑客松梗拉满
+const EASTER_EGGS = {
+  "猫|鱼": { emoji: "🐱🐟", name: "猫鱼", look: "长着猫脸的锦鲤，会蹭人要罐头", ability: "摸一下必出锦鲤体质", fact: "它其实是猫假扮的" },
+  "西电|咖啡": { emoji: "☕⚡", name: "早八续命液", look: "冒着电子波纹的深褐色液体", ability: "一口清醒到下课", fact: "西电人血液的主要成分" },
+  "黑客松|熬夜": { emoji: "🦉💻", name: "肝帝", look: "眼窝深陷但代码飞起的生物", ability: "20 小时不睡觉还能 debug", fact: "早上九点准时复活" },
+  "猫|微波炉": { emoji: "🐱🔥", name: "微波猫", look: "浑身冒着热气的橘猫", ability: "冬天自动加热到 40°C", fact: "请勿按 30 秒以上" },
+  "键盘|咖啡": { emoji: "⌨️☕", name: "程序员", look: "边敲键盘边漏咖啡的混合体", ability: "bug 见了它自动退散", fact: "周末自动休眠" },
+  "月亮|蛋糕": { emoji: "🌙🍰", name: "月亮月饼", look: "夜光的莲蓉月饼", ability: "中秋节自动发光", fact: "馅是月光做的" },
+  "雪|佛": { emoji: "⛄", name: "雪中送佛", look: "盘腿坐在雪堆里的迷你佛像", ability: "许愿概率 +5%", fact: "它也觉得冷" }
+};
+
+let currentSlot = "A";
+
+// 解析预设里的 emoji 和名字（"🐱 猫" → { emoji: "🐱", name: "猫" }）
+function parsePreset(preset) {
+  const idx = preset.indexOf(" ");
+  if (idx === -1) return { emoji: "", name: preset };
+  return { emoji: preset.slice(0, idx), name: preset.slice(idx + 1).trim() };
+}
+
+// 渲染预设
+const presetList = document.getElementById("presetList");
+let draggedPreset = null;
+
+PRESETS.forEach(p => {
+  const chip = document.createElement("div");
+  chip.className = "preset-chip";
+  chip.textContent = p;
+  chip.draggable = true;
+
+  chip.onclick = () => {
+    const { name, emoji } = parsePreset(p);
+    setSlot(currentSlot, name, emoji);
+  };
+
+  chip.addEventListener("dragstart", e => {
+    draggedPreset = parsePreset(p);
+    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData("text/plain", p);
+    chip.classList.add("dragging");
+  });
+  chip.addEventListener("dragend", () => {
+    draggedPreset = null;
+    chip.classList.remove("dragging");
+    document.querySelectorAll(".slot.drop-hover").forEach(s => s.classList.remove("drop-hover"));
+  });
+
+  presetList.appendChild(chip);
+});
+
+const inputA = document.getElementById("inputA");
+const inputB = document.getElementById("inputB");
+
+function setSlot(slot, name, emoji) {
+  const isA = slot === "A";
+  const input = isA ? inputA : inputB;
+  input.value = name || "";
+  document.getElementById(isA ? "emojiA" : "emojiB").textContent =
+    name ? (emoji || "✨") : "❓";
+}
+
+function selectSlot(slot) {
+  currentSlot = slot;
+  document.getElementById("slotA").classList.toggle("active", slot === "A");
+  document.getElementById("slotB").classList.toggle("active", slot === "B");
+}
+
+// 点卡片任意位置就能直接打字
+document.getElementById("slotA").addEventListener("click", () => {
+  selectSlot("A");
+  inputA.focus();
+});
+document.getElementById("slotB").addEventListener("click", () => {
+  selectSlot("B");
+  inputB.focus();
+});
+
+// 把快速点选的选项拖进合成框
+function bindSlotDrop(slotEl, slotKey) {
+  slotEl.addEventListener("dragover", e => {
+    if (!draggedPreset) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    slotEl.classList.add("drop-hover");
+  });
+  slotEl.addEventListener("dragleave", e => {
+    const rect = slotEl.getBoundingClientRect();
+    const outside =
+      e.clientX <= rect.left || e.clientX >= rect.right ||
+      e.clientY <= rect.top || e.clientY >= rect.bottom;
+    if (outside) slotEl.classList.remove("drop-hover");
+  });
+  slotEl.addEventListener("drop", e => {
+    e.preventDefault();
+    slotEl.classList.remove("drop-hover");
+    if (!draggedPreset) return;
+    const { name, emoji } = draggedPreset;
+    setSlot(slotKey, name, emoji);
+    selectSlot(slotKey);
+    slotEl.classList.remove("dropped");
+    void slotEl.offsetWidth; // 重启掉落入框动画
+    slotEl.classList.add("dropped");
+    burstParticles(emoji || "✨");
+  });
+}
+bindSlotDrop(document.getElementById("slotA"), "A");
+bindSlotDrop(document.getElementById("slotB"), "B");
+
+// 直接在框里输入
+function bindSlotInput(input, emojiId) {
+  input.addEventListener("focus", () => {
+    selectSlot(input === inputA ? "A" : "B");
+  });
+  input.addEventListener("input", () => {
+    document.getElementById(emojiId).textContent = input.value.trim() ? "✨" : "❓";
+  });
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
+      document.getElementById("combineBtn").click();
+    }
+  });
+}
+bindSlotInput(inputA, "emojiA");
+bindSlotInput(inputB, "emojiB");
+
+// 🎲 随机按钮
+document.getElementById("diceBtn").onclick = () => {
+  const a = PRESETS[Math.floor(Math.random() * PRESETS.length)];
+  let b = PRESETS[Math.floor(Math.random() * PRESETS.length)];
+  while (b === a) b = PRESETS[Math.floor(Math.random() * PRESETS.length)];
+  setSlot("A", a.replace(/^\S+\s/, ""), a.split(" ")[0]);
+  setSlot("B", b.replace(/^\S+\s/, ""), b.split(" ")[0]);
+  burstParticles("🎲");
+};
+
+// 粒子特效
+function burstParticles(emoji) {
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement("div");
+    p.className = "particle";
+    p.textContent = emoji;
+    p.style.left = (40 + Math.random() * 20) + "%";
+    p.style.top = "50%";
+    p.style.animationDelay = (Math.random() * 0.3) + "s";
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1600);
+  }
+}
+
+// 稀有度判定（简单版：80% 普通，12% 稀有，6% 史诗，2% 传说）
+function rollRarity() {
+  const r = Math.random();
+  if (r < 0.02) return { key: "legendary", name: "传说 ⭐⭐⭐⭐⭐" };
+  if (r < 0.08) return { key: "epic", name: "史诗 ⭐⭐⭐⭐" };
+  if (r < 0.20) return { key: "rare", name: "稀有 ⭐⭐⭐" };
+  return { key: "common", name: "普通 ⭐⭐" };
+}
+
+// 合成主逻辑
+const btn = document.getElementById("combineBtn");
+btn.onclick = async () => {
+  const a = inputA.value.trim();
+  const b = inputB.value.trim();
+  if (!a || !b) {
+    alert("先选好两个元素哦～");
+    return;
+  }
+
+  btn.disabled = true;
+
+  // 检查彩蛋
+  const eggKey = [a.toLowerCase(), b.toLowerCase()].sort().join("|");
+  let result;
+  let isEgg = false;
+  const eggHit = EASTER_EGGS[eggKey];
+
+  // 显示炼金动画
+  showAlchemyOverlay();
+  const lineTimer = setInterval(() => {
+    document.getElementById("alchemyText").textContent =
+      ALCHEMY_LINES[Math.floor(Math.random() * ALCHEMY_LINES.length)];
+  }, 900);
+
+  try {
+    if (eggHit) {
+      // 彩蛋也要假装炼金一会儿
+      await new Promise(r => setTimeout(r, 1200));
+      result = eggHit;
+      isEgg = true;
+    } else {
+      result = await callLLM(a, b);
+    }
+
+    const rarity = isEgg
+      ? { key: "legendary", name: "🥚 彩蛋发现!" }
+      : rollRarity();
+
+    hideAlchemyOverlay();
+    showResult(a, b, result, rarity);
+    saveToDex(a, b, result, rarity);
+    burstParticles(rarity.key === "legendary" ? "🌟" : "✨");
+  } catch (err) {
+    hideAlchemyOverlay();
+    alert("合成失败了: " + err.message);
+  } finally {
+    clearInterval(lineTimer);
+    btn.disabled = false;
+  }
+};
+
+function showAlchemyOverlay() {
+  document.getElementById("alchemyOverlay").classList.add("show");
+}
+function hideAlchemyOverlay() {
+  document.getElementById("alchemyOverlay").classList.remove("show");
+}
+
+async function callLLM(a, b) {
+  const sysPrompt = `你是一个神奇的"万物合成炼金术师"。用户会给你两个元素，你要脑洞大开，把它们合成一个全新的、有趣的、带点幽默的生物/物品/现象。
+
+严格按下面的 JSON 格式返回，不要返回任何其他内容，不要用 markdown 代码块：
+{
+  "emoji": "一个最能代表合成物的 emoji",
+  "name": "合成物的中文名，2-6个字，要酷或可爱",
+  "look": "一句话描述外观，30字以内",
+  "ability": "一句话描述它的能力/习性，30字以内",
+  "fact": "一句有趣的冷知识/口头禅，20字以内"
+}`;
+
+  let res;
+  try {
+    res = await fetch(BASE_URL + "/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: "system", content: sysPrompt },
+          { role: "user", content: `请把「${a}」和「${b}」合成一个新东西。` }
+        ],
+        temperature: 1.1
+      })
+    });
+  } catch (err) {
+    throw new Error(
+      location.protocol === "file:"
+        ? "请双击 start.bat 启动本地代理后再试"
+        : "无法连接合成服务，请确认本地代理已启动或线上部署正常"
+    );
+  }
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const err = await res.json();
+      detail = err?.error?.message || "";
+    } catch {}
+    throw new Error("HTTP " + res.status + (detail ? "：" + detail : ""));
+  }
+  const data = await res.json();
+  const text = data.choices[0].message.content.trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("AI 返回格式异常");
+  return JSON.parse(jsonMatch[0]);
+}
+
+let lastResult = null;
+let lastRarity = null;
+let lastAB = null;
+
+function showResult(a, b, r, rarity) {
+  lastResult = r; lastRarity = rarity; lastAB = [a, b];
+  const card = document.getElementById("resultCard");
+  card.className = "rarity-" + rarity.key;
+  card.classList.add("rarity-" + rarity.key);
+  document.getElementById("rarityBadge").textContent = rarity.name;
+  document.getElementById("resEmoji").textContent = r.emoji || "🎉";
+  document.getElementById("resName").textContent = r.name || "未知生物";
+  document.getElementById("resLook").textContent = r.look || "";
+  document.getElementById("resAbility").textContent = r.ability || "";
+  document.getElementById("resFact").textContent = r.fact || "";
+  card.style.display = "block";
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// 复制分享文案
+document.getElementById("shareBtn").onclick = () => {
+  if (!lastResult) return;
+  const text =
+    `【万物合成实验室】${lastAB[0]} + ${lastAB[1]} = ${lastResult.emoji} ${lastResult.name}\n` +
+    `外观：${lastResult.look}\n能力：${lastResult.ability}\n` +
+    `—— 来自「${TEAM_NAME}」的黑客松作品`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById("shareBtn");
+    const old = btn.textContent;
+    btn.textContent = "✅ 已复制，去粘贴吧";
+    setTimeout(() => btn.textContent = old, 2000);
+  });
+};
+
+// 图鉴
+function saveToDex(a, b, r, rarity) {
+  let dex = JSON.parse(localStorage.getItem("combo_dex") || "[]");
+  dex.unshift({ a, b, ...r, rarity: rarity.key });
+  localStorage.setItem("combo_dex", JSON.stringify(dex));
+  renderDex();
+}
+
+function renderDex() {
+  const dex = JSON.parse(localStorage.getItem("combo_dex") || "[]");
+  const list = document.getElementById("dexList");
+  document.getElementById("dexCount").textContent = dex.length ? `（${dex.length} 种）` : "";
+  if (!dex.length) {
+    list.innerHTML = '<div class="empty">还没有合成记录，快去创造吧～</div>';
+    return;
+  }
+  list.innerHTML = "";
+  dex.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "dex-item rarity-" + (item.rarity || "common");
+    div.innerHTML = `
+      <div class="dex-emoji">${item.emoji || "✨"}</div>
+      <div class="dex-name">${item.name}</div>
+      <div class="dex-meta">${item.a} + ${item.b}</div>
+    `;
+    div.onclick = () => showResult(item.a, item.b, item, {
+      key: item.rarity || "common",
+      name: item.rarity === "legendary" ? "传说" :
+            item.rarity === "epic" ? "史诗" :
+            item.rarity === "rare" ? "稀有" : "普通"
+    });
+    list.appendChild(div);
+  });
+}
+
+renderDex();
+
+const configTip = document.getElementById("configTip");
+if (location.protocol === "file:") {
+  configTip.style.display = "block";
+  configTip.textContent = "⚠️ 请双击 start.bat 启动本地代理，然后访问 http://127.0.0.1:8787（直接双击 HTML 无法调用 API）。";
+} else {
+  fetch("/api/health")
+    .then(r => r.json())
+    .then(health => {
+      if (!health.keyConfigured) {
+        configTip.style.display = "block";
+        configTip.textContent = "⚠️ 服务端还没有配置 OPENCODE_API_KEY，请在 .env 或 Vercel 环境变量中添加。";
+      }
+    })
+    .catch(() => {});
+}
+</script>
+</body>
+</html>
