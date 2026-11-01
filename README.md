@@ -67,6 +67,9 @@ OPENCODE_API_BASE=https://opencode.ai/inference/go/openai/v1
 OPENCODE_MAX_TOKENS=1500
 OPENCODE_SESSION_ID=combo-lab
 ```
+## 尝试一些吧！
+
+https://combo-lab-eta.vercel.app/
 
 ## 安全说明
 
