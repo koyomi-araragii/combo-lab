@@ -1,4 +1,5 @@
 import { getApiBase, getModel, keyConfigured } from "../lib/opencode.mjs";
+import { getImageConfig } from "../lib/image.mjs";
 
 export default function handler(req, res) {
   if (req.method !== "GET") {
@@ -11,5 +12,6 @@ export default function handler(req, res) {
     keyConfigured: keyConfigured(),
     apiBase: getApiBase(),
     model: getModel(),
+    image: getImageConfig(),
   });
 }

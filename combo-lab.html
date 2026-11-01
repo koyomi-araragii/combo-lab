@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>万物合成实验室 · Combo Lab</title>
+<title>万物合成实验室</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* author 样式的 display:block 会盖过 hidden 属性的 UA 默认值，全局纠正 */
+  [hidden] { display: none !important; }
   body {
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: #faf7f0;
@@ -138,6 +140,7 @@
   #shareBtn:hover { background: #fff; }
 
   /* 炼金中遮罩 */
+  /* ===== 炼金中遮罩：物品向中心压缩 + 品质色光芒 + 白色光点 ===== */
   #alchemyOverlay {
     position: fixed; inset: 0;
     background: rgba(20,10,40,.85);
@@ -146,25 +149,78 @@
   }
   #alchemyOverlay.show { display: flex; }
   .alchemy-box { text-align: center; color: #fff; }
-  .alchemy-circle {
-    width: 100px; height: 100px; margin: 0 auto 20px;
-    border: 4px solid rgba(255,255,255,.2);
-    border-top-color: #ffd700;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+  .alchemy-stage {
+    position: relative; width: min(70vw, 360px); height: min(70vw, 360px);
+    margin: 0 auto 26px;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  /* 八道扇形光束：不旋转，各色楔形光脉冲从中心白点交替射出 */
+  .alchemy-beams { position: absolute; inset: -25%; }
+  .alchemy-beam {
+    position: absolute; left: 50%; top: 50%;
+    width: var(--len, min(84vh, 92vw)); height: var(--len, min(84vh, 92vw));
+    margin-left: calc(var(--len, min(84vh, 92vw)) / -2);
+    margin-top: calc(var(--len, min(84vh, 92vw)) / -2);
+    border-radius: 50%;
+    /* 以圆心为原点的楔形扇区（宽度 = --spread），径向遮罩收淡边缘 */
+    background: conic-gradient(from calc(var(--a, 0deg) + var(--off, 0deg) - var(--spread, 13deg)/2) at 50% 50%,
+      var(--c, rgba(255,207,63,.8)) 0deg var(--spread, 13deg), transparent var(--spread, 13deg) 360deg);
+    -webkit-mask-image: radial-gradient(closest-side, #000 8%, rgba(0,0,0,.7) 55%, transparent 96%);
+            mask-image: radial-gradient(closest-side, #000 8%, rgba(0,0,0,.7) 55%, transparent 96%);
+    filter: blur(3px) saturate(1.2);
+    mix-blend-mode: screen;
+    opacity: 0;
+    animation: alchFanShoot var(--dur, 1.9s) ease-out var(--delay, 0s) infinite;
+  }
+  @keyframes alchFanShoot {
+    0%   { opacity: 0;    transform: rotate(var(--off, 0deg)) scale(.12); }
+    18%  { opacity: .9; }
+    100% { opacity: 0;    transform: rotate(var(--off, 0deg)) scale(1); }
+  }
+  /* 中心一团白色光点（加大版，带暖晕） */
+  .alchemy-core {
+    position: absolute; left: 50%; top: 50%; width: 26px; height: 26px;
+    transform: translate(-50%,-50%); border-radius: 50%;
+    background: #fff; z-index: 2;
+    box-shadow: 0 0 22px 10px rgba(255,255,255,.95),
+                0 0 60px 28px rgba(255,240,200,.55),
+                0 0 130px 64px rgba(255,255,255,.25);
+    animation: alchCorePulse 1.1s ease-in-out infinite;
+  }
+  @keyframes alchCorePulse {
+    0%,100% { transform: translate(-50%,-50%) scale(.9); }
+    50%     { transform: translate(-50%,-50%) scale(1.22); }
+  }
+  /* 飞奔向中心的物品们：更大、更透明、中等距离 */
+  .alchemy-flyer {
+    position: absolute; left: 50%; top: 50%; font-size: 36px; line-height: 1;
+    --a: 0deg; --r: min(34vh, 32vw);
+    opacity: 0;
+    transform: translate(-50%,-50%) rotate(var(--a)) translateY(var(--r));
+    animation: alchSuckIn var(--dur, 1.9s) cubic-bezier(.42,.1,.65,1) var(--delay, 0s) infinite both;
+  }
+  @keyframes alchSuckIn {
+    0%   { opacity: 0;   transform: translate(-50%,-50%) rotate(var(--a)) translateY(var(--r)) scale(1.05); }
+    12%  { opacity: .4; }
+    82%  { opacity: .35; }
+    100% { opacity: 0;   transform: translate(-50%,-50%) rotate(var(--a)) translateY(0%) scale(.14); }
+  }
   .alchemy-text { font-size: 18px; font-weight: 600; min-height: 28px; }
   .alchemy-sub { font-size: 13px; color: rgba(255,255,255,.6); margin-top: 8px; }
 
   /* 预设 */
   .section-title { font-size: 14px; font-weight: 700; color: #636e72; margin: 24px 0 12px; }
-  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .presets {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+    gap: 8px;
+  }
   .preset-chip {
     background: #fff; border: 1px solid #dfe6e9;
-    padding: 8px 14px; border-radius: 20px;
+    height: 42px; padding: 0 10px; border-radius: 20px;
     font-size: 14px; cursor: grab; transition: all .15s;
     user-select: none; -webkit-user-drag: element;
+    display: flex; align-items: center; justify-content: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .preset-chip:hover { border-color: #6c5ce7; color: #6c5ce7; }
   .preset-chip:active { cursor: grabbing; }
@@ -172,6 +228,18 @@
     opacity: .4; border-style: dashed;
     border-color: #6c5ce7; color: #6c5ce7;
   }
+  /* 图片款标签与合成框头像 */
+  .chip-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    object-fit: cover; vertical-align: -5px; margin-right: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .slot-avatar {
+    width: 60px; height: 60px; border-radius: 50%;
+    object-fit: cover; display: block; margin: 0 auto;
+    border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  }
+  .slot .emoji { transition: transform .3s; }
   .pick-hint { font-size: 11px; font-weight: 400; color: #b2bec3; margin-left: 6px; }
 
   /* 图鉴 */
@@ -207,23 +275,177 @@
     0% { opacity: 1; transform: translateY(0) scale(1); }
     100% { opacity: 0; transform: translateY(-200px) scale(1.5); }
   }
+
+  /* ===== 揭幕动画（全屏放大 + 品质色放射光芒）===== */
+  #revealOverlay {
+    position: fixed; inset: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 42%, rgba(38,26,66,.72), rgba(12,8,26,.95) 72%);
+    opacity: 0; pointer-events: none; overflow: hidden;
+  }
+  #revealOverlay.show { opacity: 1; pointer-events: auto; }
+  #revealOverlay.out { animation: revealOut .55s ease forwards; }
+  @keyframes revealOut {
+    0%   { opacity: 1; }
+    35%  { opacity: .9; transform: scale(.92); filter: brightness(2.2); }
+    100% { opacity: 0; transform: scale(1.06); filter: brightness(1); }
+  }
+  /* 放射光芒：conic-gradient 切片，转速和颜色随品质变 */
+  #revealOverlay .rays {
+    position: absolute; left: 50%; top: 42%; width: 190vmax; height: 190vmax;
+    transform: translate(-50%,-50%);
+    -webkit-mask-image: radial-gradient(closest-side, transparent 5%, #000 26%, transparent 88%);
+            mask-image: radial-gradient(closest-side, transparent 5%, #000 26%, transparent 88%);
+    opacity: 0; mix-blend-mode: screen;
+  }
+  #revealOverlay.show .rays { animation: raysSpin var(--spin, 14s) linear infinite, raysIn .6s ease-out both; }
+  @keyframes raysSpin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  @keyframes raysIn { from { opacity: 0; } to { opacity: var(--raysOpacity, .4); } }
+  /* 中心光晕 */
+  #revealOverlay .glow {
+    position: absolute; left: 50%; top: 42%; width: 70vmin; height: 70vmin;
+    transform: translate(-50%,-50%); border-radius: 50%;
+    background: radial-gradient(circle, var(--cGlow, rgba(255,220,150,.5)) 0%, transparent 65%);
+    animation: glowPulse 1.6s ease-in-out infinite; opacity: 0;
+  }
+  #revealOverlay.show .glow { opacity: 1; }
+  @keyframes glowPulse { 0%,100% { transform: translate(-50%,-50%) scale(.92); } 50% { transform: translate(-50%,-50%) scale(1.12); } }
+  /* 入场冲击环 */
+  #revealOverlay .ring {
+    position: absolute; left: 50%; top: 42%; width: 40vmin; height: 40vmin;
+    transform: translate(-50%,-50%) scale(.2); border-radius: 50%;
+    border: 3px solid var(--cMain, #ffd54f); box-shadow: 0 0 30px var(--cMain, #ffd54f);
+    opacity: 0;
+  }
+  #revealOverlay.show .ring { animation: ringBurst .9s cubic-bezier(.2,.8,.3,1) .15s forwards; }
+  @keyframes ringBurst {
+    0% { opacity: .9; transform: translate(-50%,-50%) scale(.2); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(3.2); }
+  }
+  #revealOverlay .reveal-box { position: relative; text-align: center; color: #fff; padding: 0 20px; }
+  #revealOverlay.show .reveal-box { animation: revealPop .8s cubic-bezier(.2,1.3,.4,1) both; }
+  @keyframes revealPop {
+    0%   { transform: scale(.15); opacity: 0; }
+    60%  { transform: scale(1.06); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  #revealOverlay .reveal-rarity {
+    font-size: 15px; font-weight: 900; letter-spacing: 4px;
+    color: var(--cText, #ffd54f); text-shadow: 0 0 12px var(--cMain, #ffd54f);
+    margin-bottom: 10px;
+  }
+  #revealOverlay .reveal-emoji {
+    font-size: min(40vh, 34vw); line-height: 1.15;
+    filter: drop-shadow(0 0 34px var(--cMain, #ffd54f));
+  }
+  #revealOverlay.show .reveal-emoji { animation: emojiFloat 2.6s ease-in-out .8s infinite alternate; }
+  @keyframes emojiFloat { from { transform: translateY(0); } to { transform: translateY(-12px); } }
+  #revealOverlay .reveal-name { font-size: 44px; font-weight: 900; margin-top: 6px; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+  #revealOverlay .reveal-sub { font-size: 14px; color: rgba(255,255,255,.75); margin-top: 10px; }
+
+  /* 氛围 emoji 环绕主形象旋转 */
+  #revealOverlay .reveal-emoji-wrap { position: relative; display: inline-block; }
+  #revealOverlay .orbit {
+    position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+    animation: orbitSpin var(--orbitDur, 10s) linear infinite;
+  }
+  @keyframes orbitSpin { to { transform: rotate(360deg); } }
+  #revealOverlay .orbiter {
+    position: absolute; left: 0; top: 0; font-size: min(9vh, 7.5vw); line-height: 1;
+    transform: rotate(var(--a)) translateY(var(--r)) rotate(calc(-1 * var(--a)));
+    filter: drop-shadow(0 0 10px var(--cMain, #ffd54f));
+    opacity: 0; animation: orbiterIn .5s ease-out var(--delay, 0s) forwards;
+  }
+  @keyframes orbiterIn { from { opacity: 0; } to { opacity: .95; } }
+
+  /* 图片彩蛋：照片取代主 emoji，品质色描边 */
+  #revealOverlay .reveal-photo {
+    max-width: min(78vw, 64vh); max-height: 60vh; width: auto; height: auto;
+    border-radius: 16px; display: block; margin: 0 auto;
+    border: 3px solid var(--cMain, #ffd54f);
+    box-shadow: 0 0 30px var(--cMain, #ffd54f), 0 12px 40px rgba(0,0,0,.5);
+    object-fit: cover;
+  }
+  #resultCard .card-photo {
+    max-width: min(86%, 340px); max-height: 240px; width: auto; height: auto;
+    border-radius: 12px; display: block; margin: 0 auto 8px;
+    border: 2px solid rgba(0,0,0,.12); box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    object-fit: cover;
+  }
+
+  /* ===== 图片彩蛋下方的弹幕流 ===== */
+  .danmaku-host { display: none; }
+  .danmaku-track {
+    position: relative; overflow: hidden; width: 100%; height: 92px;
+    pointer-events: none;
+  }
+  .danmaku-track.small { height: 52px; }
+  .danmaku-item {
+    position: absolute; left: 100%; white-space: nowrap;
+    font-size: 18px; font-weight: 600; color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.75), 0 0 10px rgba(0,0,0,.4);
+    animation: danmakuFly var(--dur, 4s) linear forwards;
+  }
+  .danmaku-track.small .danmaku-item {
+    font-size: 13px; color: #5d4a1f;
+    text-shadow: 0 1px 0 rgba(255,255,255,.7);
+  }
+  @keyframes danmakuFly {
+    0%   { transform: translateX(0); opacity: 0; }
+    12%  { opacity: .95; }
+    100% { transform: translateX(calc(-1 * var(--dist, 100vw) - 100%)); opacity: 0; }
+  }
+
+  /* 结果卡片：主形象右上角的点缀小序列 */
+  #resultCard .card-extras {
+    font-size: 20px; vertical-align: super; margin-left: 6px; opacity: .85;
+  }
+
+  /* 品质配色：普通灰 / 稀有蓝 / 史诗紫 / 传说金 / 彩蛋彩虹 */
+  #revealOverlay.r-common    { --cMain:#aebac6; --cGlow:rgba(190,205,220,.35); --cText:#dfe8ef; --raysOpacity:.26; --spin:18s; }
+  #revealOverlay.r-rare      { --cMain:#5aa7ff; --cGlow:rgba(90,167,255,.45);  --cText:#bcdcff; --raysOpacity:.40; --spin:14s; }
+  #revealOverlay.r-epic      { --cMain:#b06bff; --cGlow:rgba(176,107,255,.5);  --cText:#e3ccff; --raysOpacity:.50; --spin:11s; }
+  #revealOverlay.r-legendary { --cMain:#ffcf3f; --cGlow:rgba(255,207,63,.65);  --cText:#ffe89a; --raysOpacity:.65; --spin:8s; }
+  #revealOverlay.r-egg       { --cMain:#ff6bd6; --cGlow:rgba(255,107,214,.55); --cText:#ffc4f2; --raysOpacity:.60; --spin:6s; }
+  #revealOverlay.r-common    .rays { background: repeating-conic-gradient(from 0deg, rgba(210,222,235,.9) 0deg 5deg, transparent 5deg 30deg); }
+  #revealOverlay.r-rare      .rays { background: repeating-conic-gradient(from 0deg, rgba(120,190,255,.95) 0deg 6deg, transparent 6deg 28deg); }
+  #revealOverlay.r-epic      .rays { background: repeating-conic-gradient(from 0deg, rgba(190,130,255,.95) 0deg 7deg, transparent 7deg 26deg); }
+  #revealOverlay.r-legendary .rays { background: repeating-conic-gradient(from 0deg, rgba(255,214,90,1) 0deg 8deg, transparent 8deg 24deg); }
+  #revealOverlay.r-egg       .rays { background: repeating-conic-gradient(from 0deg, #ff5f5f 0deg 15deg, #ffb14d 15deg 30deg, #fff36b 30deg 45deg, #6bff9e 45deg 60deg, #5ad0ff 60deg 75deg, #b06bff 75deg 90deg); }
 </style>
 </head>
 <body>
 
-<!-- 炼金中遮罩 -->
+<!-- 揭幕动画遮罩：合成结果放大到全屏 + 品质色放射光芒 -->
+<div id="revealOverlay">
+  <div class="rays"></div>
+  <div class="glow"></div>
+  <div class="ring"></div>
+  <div class="reveal-box">
+    <div class="reveal-rarity" id="revealRarity"></div>
+    <div class="reveal-emoji-wrap"><div class="reveal-emoji" id="revealEmoji">✨</div><img class="reveal-photo" id="revealPhoto" alt="" hidden></div>
+    <div class="danmaku-host" id="revealDanmaku"></div>
+    <div class="reveal-name" id="revealName"></div>
+    <div class="reveal-sub" id="revealSub"></div>
+  </div>
+</div>
+
+<!-- 炼金中遮罩：万物向中心坍缩 -->
 <div id="alchemyOverlay">
   <div class="alchemy-box">
-    <div class="alchemy-circle"></div>
+    <div class="alchemy-stage" id="alchemyStage">
+      <div class="alchemy-beams" id="alchemyBeams"></div>
+      <div class="alchemy-core"></div>
+    </div>
     <div class="alchemy-text" id="alchemyText">正在搅拌坩埚...</div>
-    <div class="alchemy-sub" id="alchemySub">combo lab · making magic</div>
+    <div class="alchemy-sub" id="alchemySub">正在把万物炼成新的东西…</div>
   </div>
 </div>
 
 <div class="container">
   <header>
     <h1>万物<span class="accent">合成</span>实验室</h1>
-    <p>combine anything, discover everything ✨</p>
+    <p>把两个毫不相干的东西，炼成一个从不存在的新物种 ✨</p>
   </header>
 
   <div class="config-tip" id="configTip">
@@ -250,6 +472,7 @@
   <div id="resultCard" class="rarity-common">
     <div class="rarity-badge" id="rarityBadge">普通</div>
     <div class="res-emoji" id="resEmoji">🎉</div>
+    <div class="danmaku-host" id="cardDanmaku"></div>
     <div class="res-name" id="resName">合成物名字</div>
     <div class="res-row"><b>外观</b><span id="resLook"></span></div>
     <div class="res-row"><b>能力</b><span id="resAbility"></span></div>
@@ -279,11 +502,33 @@ const MODEL    = "deepseek-v4.1-flash";
 const TEAM_NAME = "合成大队";
 /* ============================================ */
 
+// 🎲 炼金流派：每次合成随机注入一个，逼模型走不同的想象路径，
+//    避免同一对元素永远得到近似结果（以前只给一句"脑洞大开"，基本都在做表面拼接）
+const FLAVORS = [
+  "克苏鲁低语系：这个东西隐约不对劲，看一眼会让人san值下降，但又诡异地迷人",
+  "宫崎骏治愈系：它温柔、有呼吸感，像住在雨夜便利店或旧车站的精怪",
+  "废土机械朋克系：零件都是拼凑焊接的，靠静电和机油活着",
+  "伪纪录片BBC系：它是一种真实存在的物种，请用动物世界旁白的口吻描述它",
+  "互联网发疯文学系：它精神状态堪忧，是当代打工人的赛博嘴替",
+  "童话绘本系：画面软萌，但藏着一个细思极恐的小秘密",
+  "美食番深夜食堂系：它可以被端上桌，吃的人会想起一段往事",
+  "武侠修仙系：它是某种功法、法宝或山中精怪，江湖上有它的传说",
+  "校园都市怪谈系：它就潜伏在大家的日常里，室友好像看见了又好像没看见",
+  "太空歌剧系：它以光年为生活半径，人类对它一无所知",
+  "哲学拟人系：它其实是一个抽象概念（时间、内耗、存在主义……）的化身",
+  "复古像素游戏系：它有8-bit出场动画，像某款失落卡带里的隐藏Boss",
+];
+function pickFlavor() {
+  return FLAVORS[Math.floor(Math.random() * FLAVORS.length)];
+}
+
+let currentFlavor = null;
+
 // 炼金时轮播的文案（让等待不无聊）
 const ALCHEMY_LINES = [
   "正在搅拌坩埚...",
   "元素们在握手...",
-  "正在召唤魔法...",
+  "万物坍缩中...",
   "检查化学反应...",
   "有点烫，吹一吹...",
   "结果马上出锅...",
@@ -296,25 +541,38 @@ const PRESETS = [
   "☁️ 云","🤖 机器人","🍕 披萨","🌸 花","🌲 树","🎸 吉他",
   "🍰 蛋糕","🔑 钥匙","🎈 气球","🔥 火","💧 水","💨 风",
   "🪨 石头","💡 灯泡","🐉 龙","🌈 彩虹","🎩 帽子","⌨️ 键盘",
-  "🍜 泡面","📱 手机","🛏️ 床","🎧 耳机"
+  "🍜 泡面","📱 手机","🛏️ 床","🎧 耳机",
+  "🏫 西电","🎓 清华","🚀 上交","⚡ 成电",
+  { img: "assets/preset-xixiaodian.jpg", emoji: "🔌", name: "西小电" },
+  { img: "assets/preset-zhansha.jpg",   emoji: "⚔️", name: "斩杀" },
+  { img: "assets/preset-naiwa.jpg",     emoji: "🍼", name: "奶蛙" },
+  { img: "assets/preset-tafei.jpg",     emoji: "🎀", name: "塔菲" }
 ];
 
 // 🥚 彩蛋组合：key 是 "a|b"（小写），命中直接返回预设结果，不调 API
 // 现场评委输入这些词会有惊喜，西电/黑客松梗拉满
 const EASTER_EGGS = {
-  "猫|鱼": { emoji: "🐱🐟", name: "猫鱼", look: "长着猫脸的锦鲤，会蹭人要罐头", ability: "摸一下必出锦鲤体质", fact: "它其实是猫假扮的" },
-  "西电|咖啡": { emoji: "☕⚡", name: "早八续命液", look: "冒着电子波纹的深褐色液体", ability: "一口清醒到下课", fact: "西电人血液的主要成分" },
-  "黑客松|熬夜": { emoji: "🦉💻", name: "肝帝", look: "眼窝深陷但代码飞起的生物", ability: "20 小时不睡觉还能 debug", fact: "早上九点准时复活" },
-  "猫|微波炉": { emoji: "🐱🔥", name: "微波猫", look: "浑身冒着热气的橘猫", ability: "冬天自动加热到 40°C", fact: "请勿按 30 秒以上" },
-  "键盘|咖啡": { emoji: "⌨️☕", name: "程序员", look: "边敲键盘边漏咖啡的混合体", ability: "bug 见了它自动退散", fact: "周末自动休眠" },
-  "月亮|蛋糕": { emoji: "🌙🍰", name: "月亮月饼", look: "夜光的莲蓉月饼", ability: "中秋节自动发光", fact: "馅是月光做的" },
-  "雪|佛": { emoji: "⛄", name: "雪中送佛", look: "盘腿坐在雪堆里的迷你佛像", ability: "许愿概率 +5%", fact: "它也觉得冷" }
+  "猫|鱼": { emoji: "🐱🐟💦", name: "猫鱼", look: "长着猫脸的锦鲤，会蹭人要罐头", ability: "摸一下必出锦鲤体质", fact: "它其实是猫假扮的" },
+  "西电|咖啡": { emoji: "☕⚡🌫️", name: "早八续命液", look: "冒着电子波纹的深褐色液体", ability: "一口清醒到下课", fact: "西电人血液的主要成分" },
+  "黑客松|熬夜": { emoji: "🦉💻🔋", name: "肝帝", look: "眼窝深陷但代码飞起的生物", ability: "20 小时不睡觉还能 debug", fact: "早上九点准时复活" },
+  "猫|微波炉": { emoji: "🐱🔥〰️", name: "微波猫", look: "浑身冒着热气的橘猫", ability: "冬天自动加热到 40°C", fact: "请勿按 30 秒以上" },
+  "键盘|咖啡": { emoji: "⌨️☕🐛", name: "程序员", look: "边敲键盘边漏咖啡的混合体", ability: "bug 见了它自动退散", fact: "周末自动休眠" },
+  "月亮|蛋糕": { emoji: "🌙🍰✨", name: "月亮月饼", look: "夜光的莲蓉月饼", ability: "中秋节自动发光", fact: "馅是月光做的" },
+  "雪|佛": { emoji: "⛄🪷❄️", name: "雪中送佛", look: "盘腿坐在雪堆里的迷你佛像", ability: "许愿概率 +5%", fact: "它也觉得冷" },
+  // 图片彩蛋：有 img 字段时，揭幕/卡片用照片代替 emoji
+  "上交|西电": { img: "assets/xidian-sjtu.jpg", name: "浦江到渭水", look: "背着书包闯进积水的西电学子", ability: "以人体为船桨，划出跨校洋流", fact: "我们有自己的湖人" },
+  "清华|西电": { img: "assets/xidian-tsinghua.jpg", name: "五五开定理", look: "一脸真诚的升学名师", ability: "开口即定论：两校等价，证毕", fact: "老子是清华他是什么" },
+  "成电|西电": { img: "assets/xidian-chengdian.jpg", name: "电子科技大学·双子星", look: "红蓝两枚校徽并肩而立", ability: "同名不同城，互认亲兄弟", fact: "做兄弟，在心中" },
+  "奶蛙|西小电": { img: "assets/egg-xixiaodian-naiwa.jpg", name: "思考蛙", look: "托腮沉思的蓝皮吉祥物", ability: "遇到难题先沉默三秒，然后在装样子", fact: "它想的不是问题，是晚上吃啥" },
+  "斩杀|西小电": { img: "assets/egg-xixiaodian-zhansha.jpg", name: "低分凝视", look: "高对比黑白放大的蛙脸", ability: "成绩一出50分线，它立刻出现在你梦里", fact: "if score<50" },
+  "塔菲|西电": { img: "assets/xidian-taffi.jpg", name: "三十亿校徽", look: "被塔菲糊满的西电蓝校徽", ability: "塔菲拿300亿供你上学（真的）", fact: "taffy拿300亿供你上西电，你当taffy是空气" }
 };
 
 let currentSlot = "A";
 
-// 解析预设里的 emoji 和名字（"🐱 猫" → { emoji: "🐱", name: "猫" }）
+// 解析预设：字符串 "🐱 猫" 或对象 { img, emoji, name } 统一成 { emoji, name, img }
 function parsePreset(preset) {
+  if (typeof preset === "object") return { emoji: preset.emoji || "", name: preset.name, img: preset.img };
   const idx = preset.indexOf(" ");
   if (idx === -1) return { emoji: "", name: preset };
   return { emoji: preset.slice(0, idx), name: preset.slice(idx + 1).trim() };
@@ -325,20 +583,29 @@ const presetList = document.getElementById("presetList");
 let draggedPreset = null;
 
 PRESETS.forEach(p => {
+  const parsed = parsePreset(p);
   const chip = document.createElement("div");
   chip.className = "preset-chip";
-  chip.textContent = p;
+  if (parsed.img) {
+    // 图片款标签：圆形小头像 + 名字
+    chip.classList.add("with-img");
+    const av = document.createElement("img");
+    av.className = "chip-avatar";
+    av.src = parsed.img;
+    av.alt = "";
+    chip.appendChild(av);
+    chip.appendChild(document.createTextNode(" " + parsed.name));
+  } else {
+    chip.textContent = p;
+  }
   chip.draggable = true;
 
-  chip.onclick = () => {
-    const { name, emoji } = parsePreset(p);
-    setSlot(currentSlot, name, emoji);
-  };
+  chip.onclick = () => setSlot(currentSlot, parsed.name, parsed.emoji, parsed.img);
 
   chip.addEventListener("dragstart", e => {
-    draggedPreset = parsePreset(p);
+    draggedPreset = parsed;
     e.dataTransfer.effectAllowed = "copy";
-    e.dataTransfer.setData("text/plain", p);
+    e.dataTransfer.setData("text/plain", parsed.name);
     chip.classList.add("dragging");
   });
   chip.addEventListener("dragend", () => {
@@ -353,12 +620,25 @@ PRESETS.forEach(p => {
 const inputA = document.getElementById("inputA");
 const inputB = document.getElementById("inputB");
 
-function setSlot(slot, name, emoji) {
+// slot 图标更新：有图片用圆形头像，否则回到 emoji 文字
+function setSlotIcon(el, name, emoji, img) {
+  if (img && name) {
+    el.innerHTML = "";
+    const av = document.createElement("img");
+    av.className = "slot-avatar";
+    av.src = img;
+    av.alt = "";
+    el.appendChild(av);
+    return;
+  }
+  el.textContent = name ? (emoji || "✨") : "❓";
+}
+
+function setSlot(slot, name, emoji, img) {
   const isA = slot === "A";
   const input = isA ? inputA : inputB;
   input.value = name || "";
-  document.getElementById(isA ? "emojiA" : "emojiB").textContent =
-    name ? (emoji || "✨") : "❓";
+  setSlotIcon(document.getElementById(isA ? "emojiA" : "emojiB"), name, emoji, img);
 }
 
 function selectSlot(slot) {
@@ -396,8 +676,8 @@ function bindSlotDrop(slotEl, slotKey) {
     e.preventDefault();
     slotEl.classList.remove("drop-hover");
     if (!draggedPreset) return;
-    const { name, emoji } = draggedPreset;
-    setSlot(slotKey, name, emoji);
+    const { name, emoji, img } = draggedPreset;
+    setSlot(slotKey, name, emoji, img);
     selectSlot(slotKey);
     slotEl.classList.remove("dropped");
     void slotEl.offsetWidth; // 重启掉落入框动画
@@ -414,7 +694,8 @@ function bindSlotInput(input, emojiId) {
     selectSlot(input === inputA ? "A" : "B");
   });
   input.addEventListener("input", () => {
-    document.getElementById(emojiId).textContent = input.value.trim() ? "✨" : "❓";
+    // 手动改字即视为普通文本元素，图标退回 emoji
+    setSlotIcon(document.getElementById(emojiId), input.value.trim(), "✨");
   });
   input.addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
@@ -427,11 +708,11 @@ bindSlotInput(inputB, "emojiB");
 
 // 🎲 随机按钮
 document.getElementById("diceBtn").onclick = () => {
-  const a = PRESETS[Math.floor(Math.random() * PRESETS.length)];
-  let b = PRESETS[Math.floor(Math.random() * PRESETS.length)];
-  while (b === a) b = PRESETS[Math.floor(Math.random() * PRESETS.length)];
-  setSlot("A", a.replace(/^\S+\s/, ""), a.split(" ")[0]);
-  setSlot("B", b.replace(/^\S+\s/, ""), b.split(" ")[0]);
+  const a = parsePreset(PRESETS[Math.floor(Math.random() * PRESETS.length)]);
+  let b = parsePreset(PRESETS[Math.floor(Math.random() * PRESETS.length)]);
+  while (b.name === a.name) b = parsePreset(PRESETS[Math.floor(Math.random() * PRESETS.length)]);
+  setSlot("A", a.name, a.emoji, a.img);
+  setSlot("B", b.name, b.emoji, b.img);
   burstParticles("🎲");
 };
 
@@ -458,6 +739,143 @@ function rollRarity() {
   return { key: "common", name: "普通 ⭐⭐" };
 }
 
+// ===== 揭幕动画：全屏放大 + 品质色放射光芒，短暂停留后退回界面 =====
+let revealTimers = [];
+function clearRevealTimers() {
+  revealTimers.forEach(t => clearTimeout(t));
+  revealTimers = [];
+}
+
+// emoji 序列拆分：按字素簇切分（🐱‍👤 这类组合 emoji 不会被拦腰截断）
+const graphemeSplit = (s) => (typeof Intl !== "undefined" && Intl.Segmenter)
+  ? Array.from(new Intl.Segmenter("zh", { granularity: "grapheme" }).segment(s), x => x.segment)
+  : Array.from(String(s || ""));
+function parseEmojiSeq(raw) {
+  const list = graphemeSplit((raw || "").trim()).filter(Boolean).slice(0, 4);
+  return { main: list[0] || "✨", extras: list.slice(1) };
+}
+
+// 氛围 emoji 绕主形象公转（品质越高转得越快）
+const ORBIT_DUR = { common: 13, rare: 11, epic: 9, legendary: 7 };
+function buildOrbit(extras, rarity) {
+  const wrap = document.querySelector("#revealOverlay .reveal-emoji-wrap");
+  wrap.querySelectorAll(".orbit").forEach(o => o.remove());
+  if (!extras.length) return;
+  const orbit = document.createElement("div");
+  orbit.className = "orbit";
+  orbit.style.setProperty("--orbitDur", (ORBIT_DUR[rarity.key] || 13) + "s");
+  extras.forEach((e, i) => {
+    const sp = document.createElement("span");
+    sp.className = "orbiter";
+    sp.textContent = e;
+    sp.style.setProperty("--a", (i * (360 / extras.length) + 20) + "deg");
+    sp.style.setProperty("--r", "min(30vh, 26vw)");
+    sp.style.setProperty("--delay", (0.55 + i * 0.18) + "s");
+    orbit.appendChild(sp);
+  });
+  wrap.appendChild(orbit);
+}
+
+// ===== 图片彩蛋弹幕：梗评论从右向左快速划过并逐渐变透明 =====
+const IMG_DANMAKU = {
+  "assets/egg-xixiaodian-naiwa.jpg":  ["西小电在思考人生", "思考是装的，饿是真的", "蛙：别催，在想", "这姿势我期末周也做过", "想明白中午吃啥了吗"],
+  "assets/egg-xixiaodian-zhansha.jpg": ["if score<50", "它看过来了", "别看成绩单，别看", "49分惊魂夜", "关掉屏幕它就消失了", "斩杀本杀"],
+  "assets/xidian-sjtu.jpg":           ["我们有自己的湖人", "无板自驾", "水深0.5米，勇气100米", "西电水利专业实测", "真·浪里白条"],
+  "assets/xidian-tsinghua.jpg":       ["老子是清华他是什么", "名师断案，驳回", "直播间沉默的三秒", "这句话火了整个考研圈", "西电：啊对对对"],
+  "assets/xidian-chengdian.jpg":      ["做兄弟，在心中", "红蓝并蒂", "同名不同河，锁了", "成电：客气了兄弟", "1931&1956，双厨狂喜"],
+  "assets/xidian-taffi.jpg":          ["我累铜泥丸", "哪来的讨口子", "行行好", "300亿，我下辈子还", "塔菲心在滴血", "认菲作父保录取"],
+};
+const COMMON_DANMAKU = ["前方高能", "这图我存了", "好家伙", "6", "哈哈哈哈哈哈", "官方整活"];
+
+function danmakuPoolFor(img) {
+  return IMG_DANMAKU[img] || COMMON_DANMAKU;
+}
+
+function startDanmaku(host, pool, cfg) {
+  stopDanmaku(host); // 清掉上一轮
+  const track = document.createElement("div");
+  track.className = "danmaku-track" + (cfg.small ? " small" : "");
+  host.appendChild(track);
+  host.style.display = "block";
+  const lanes = cfg.small ? 2 : 3;
+  const laneH = cfg.small ? 22 : 28;
+  const spawn = () => {
+    const w = track.clientWidth || window.innerWidth;
+    const el = document.createElement("span");
+    el.className = "danmaku-item";
+    el.textContent = pool[Math.floor(Math.random() * pool.length)];
+    el.style.top = (2 + Math.floor(Math.random() * lanes) * laneH) + "px";
+    el.style.setProperty("--dist", w + "px");
+    el.style.setProperty("--dur", (cfg.min + Math.random() * (cfg.max - cfg.min)).toFixed(2) + "s");
+    el.addEventListener("animationend", () => el.remove());
+    track.appendChild(el);
+  };
+  spawn(); spawn(); spawn();               // 开局先刷三条，避免空场
+  const timer = setInterval(spawn, cfg.every);
+  host._stop = () => {
+    clearInterval(timer);
+    host.style.display = "none";
+    track.remove();
+    host._stop = null;
+  };
+}
+function stopDanmaku(host) { if (host._stop) host._stop(); }
+
+function playReveal(a, b, r, rarity) {
+  const ov = document.getElementById("revealOverlay");
+  clearRevealTimers();
+  ov.className = "show r-" + rarity.key;
+  if (rarity.egg) ov.classList.add("r-egg");
+  document.getElementById("revealRarity").textContent = rarity.name;
+  const { main, extras } = parseEmojiSeq(r.emoji);
+  const emojiEl = document.getElementById("revealEmoji");
+  const photoEl = document.getElementById("revealPhoto");
+  const revealDm = document.getElementById("revealDanmaku");
+  if (r.img) {
+    // 图片彩蛋：照片取代主 emoji（轨道留空），照片下开弹幕
+    emojiEl.hidden = true;
+    buildOrbit([], rarity);
+    photoEl.src = r.img;
+    photoEl.alt = r.name || "合成物";
+    photoEl.hidden = false;
+    startDanmaku(revealDm, danmakuPoolFor(r.img), { min: 3.2, max: 4.8, every: 520 });
+  } else {
+    // 非图片结果：连 src 一起清掉，杜绝照片残留
+    stopDanmaku(revealDm);
+    photoEl.hidden = true;
+    photoEl.removeAttribute("src");
+    emojiEl.hidden = false;
+    emojiEl.textContent = main;
+    buildOrbit(extras, rarity);
+  }
+  document.getElementById("revealName").textContent = r.name || "未知生物";
+  document.getElementById("revealSub").textContent = `${a} + ${b} · 点击可提前返回`;
+
+  // 传说/彩蛋追加粒子雨（用点缀 emoji，没有就用对应符号）
+  if (rarity.key === "legendary" || rarity.egg) {
+    const rain = extras[0] || (rarity.egg ? "🥚" : "🌟");
+    for (let i = 0; i < 14; i++) {
+      revealTimers.push(setTimeout(() => burstParticles(rain), i * 120));
+    }
+  }
+
+  const close = () => {
+    if (!ov.classList.contains("show")) return;
+    clearRevealTimers();
+    stopDanmaku(revealDm);            // 揭幕结束，弹幕收工
+    ov.removeEventListener("click", close);
+    ov.classList.add("out");
+    revealTimers.push(setTimeout(() => { ov.className = ""; }, 560));
+  };
+  ov.addEventListener("click", close);
+  // 稀有度越高，看得越久（普通2.3s → 传说4.2s）
+  const holdMs = rarity.key === "legendary" ? 4200
+    : rarity.key === "epic" ? 3400
+    : rarity.key === "rare" ? 2800 : 2300;
+  revealTimers.push(setTimeout(close, holdMs));
+  return close;
+}
+
 // 合成主逻辑
 const btn = document.getElementById("combineBtn");
 btn.onclick = async () => {
@@ -476,8 +894,11 @@ btn.onclick = async () => {
   let isEgg = false;
   const eggHit = EASTER_EGGS[eggKey];
 
-  // 显示炼金动画
-  showAlchemyOverlay();
+  // 🎲 抽一个炼金流派，callLLM 会用它构造提示词
+  currentFlavor = pickFlavor();
+
+  // 显示炼金动画（把本次流派的小名挂在副标题上）
+  showAlchemyOverlay(currentFlavor.split("：")[0]);
   const lineTimer = setInterval(() => {
     document.getElementById("alchemyText").textContent =
       ALCHEMY_LINES[Math.floor(Math.random() * ALCHEMY_LINES.length)];
@@ -485,8 +906,8 @@ btn.onclick = async () => {
 
   try {
     if (eggHit) {
-      // 彩蛋也要假装炼金一会儿
-      await new Promise(r => setTimeout(r, 1200));
+      // 彩蛋也假装炼金一小会儿（够看动画就行）
+      await new Promise(r => setTimeout(r, 600));
       result = eggHit;
       isEgg = true;
     } else {
@@ -494,13 +915,13 @@ btn.onclick = async () => {
     }
 
     const rarity = isEgg
-      ? { key: "legendary", name: "🥚 彩蛋发现!" }
+      ? { key: "legendary", name: "🥚 彩蛋发现!", egg: true }
       : rollRarity();
 
     hideAlchemyOverlay();
     showResult(a, b, result, rarity);
     saveToDex(a, b, result, rarity);
-    burstParticles(rarity.key === "legendary" ? "🌟" : "✨");
+    playReveal(a, b, result, rarity);
   } catch (err) {
     hideAlchemyOverlay();
     alert("合成失败了: " + err.message);
@@ -510,62 +931,192 @@ btn.onclick = async () => {
   }
 };
 
-function showAlchemyOverlay() {
+// 炼金时被"吸进坩埚"的万物图标池
+const SUCK_POOL = [
+  "🐱","🎸","☕️","🌙","🤖","🍕","📖","🌸","🔑","🎈","🔥","💧","💨","🪨",
+  "💡","🐉","🌈","⌨️","🍜","📱","🎧","🛏️","⭐️","☁️","🍰","🎩","🐶","🌲",
+];
+
+// 八道光束：相邻颜色错开，脉冲从中心白点交替射出
+const BEAM_COLORS = [
+  "rgba(255,207,63,.85)",   // 传说金
+  "rgba(176,107,255,.8)",   // 史诗紫
+  "rgba(90,167,255,.8)",    // 稀有蓝
+  "rgba(205,218,230,.6)",   // 普通灰白
+  "rgba(255,107,214,.75)",  // 彩蛋粉
+  "rgba(107,255,158,.6)",   // 治愈绿
+  "rgba(255,180,70,.8)",    // 暖金
+  "rgba(140,120,255,.75)",  // 靛紫
+];
+function buildBeams() {
+  const box = document.getElementById("alchemyBeams");
+  if (box.childElementCount) return; // 只需生成一次
+  BEAM_COLORS.forEach((c, i) => {
+    const b = document.createElement("div");
+    b.className = "alchemy-beam";
+    b.style.setProperty("--a", (i * 45) + "deg");                          // 固定方位
+    b.style.setProperty("--off", (-6 + (i % 3) * 6) + "deg");              // 小幅摆动，活一些
+    b.style.setProperty("--c", c);
+    b.style.setProperty("--spread", (12 + (i % 3) * 4) + "deg");           // 扇形楔角 12~20°
+    b.style.setProperty("--len", "min(84vh, 92vw)");
+    b.style.setProperty("--dur", (1.6 + (i % 4) * 0.4).toFixed(2) + "s");   // 周期错开=交替射出
+    b.style.setProperty("--delay", -(i * 0.25).toFixed(2) + "s");           // 负延迟：开播即错峰
+    box.appendChild(b);
+  });
+}
+
+function spawnFlyers() {
+  const stage = document.getElementById("alchemyStage");
+  stage.querySelectorAll(".alchemy-flyer").forEach(el => el.remove());
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("div");
+    el.className = "alchemy-flyer";
+    el.textContent = SUCK_POOL[Math.floor(Math.random() * SUCK_POOL.length)];
+    // 中等距离入场（画面内可见处），角度/时长/字号随机
+    el.style.setProperty("--a", (i * (360 / n) + Math.random() * 24 - 12) + "deg");
+    el.style.setProperty("--r", "min(" + (30 + Math.random() * 12).toFixed(0) + "vh, " + (28 + Math.random() * 12).toFixed(0) + "vw)");
+    el.style.setProperty("--dur", (1.7 + Math.random() * 0.7).toFixed(2) + "s");
+    el.style.setProperty("--delay", (Math.random() * 1.4).toFixed(2) + "s");
+    el.style.fontSize = (32 + Math.random() * 18).toFixed(0) + "px";
+    stage.appendChild(el);
+  }
+}
+
+function showAlchemyOverlay(flavorName) {
   document.getElementById("alchemyOverlay").classList.add("show");
+  document.getElementById("alchemySub").textContent = flavorName
+    ? `本次流派 · ${flavorName}`
+    : "正在把万物炼成新的东西…";
+  buildBeams();
+  spawnFlyers();
 }
 function hideAlchemyOverlay() {
   document.getElementById("alchemyOverlay").classList.remove("show");
 }
 
+// 从模型回复里尽力抠出 JSON：整段解析 → 逐个 { 平衡扫描 → 截断修复。
+// 旧写法 /\{[\s\S]*\}/ 遇到"JSON+说明文字"或输出被 max_tokens 截断就会直接失败。
+function extractJson(text) {
+  const tryParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+  let obj = tryParse(text);
+  if (obj && typeof obj === "object") return obj;
+
+  for (let i = 0; i < text.length && !obj; i++) {
+    if (text[i] !== "{") continue;
+    let depth = 0, inStr = false, esc = false;
+    for (let j = i; j < text.length; j++) {
+      const ch = text[j];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === "\\") esc = true;
+        else if (ch === '"') inStr = false;
+      } else if (ch === '"') inStr = true;
+      else if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          obj = tryParse(text.slice(i, j + 1));
+          break;
+        }
+      }
+    }
+  }
+  if (obj) return obj;
+
+  // 兜底：输出中途被截断时，把已完整的字段一个个抠出来
+  obj = {};
+  const fieldRe = /"(emoji|name|look|ability|fact)"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let m;
+  while ((m = fieldRe.exec(text))) {
+    obj[m[1]] = JSON.parse('"' + m[2] + '"');
+  }
+  if (obj.name || obj.look || obj.ability) return obj;
+  throw new Error("AI 返回格式异常");
+}
+
 async function callLLM(a, b) {
-  const sysPrompt = `你是一个神奇的"万物合成炼金术师"。用户会给你两个元素，你要脑洞大开，把它们合成一个全新的、有趣的、带点幽默的生物/物品/现象。
+  const flavor = currentFlavor || pickFlavor();
 
-严格按下面的 JSON 格式返回，不要返回任何其他内容，不要用 markdown 代码块：
-{
-  "emoji": "一个最能代表合成物的 emoji",
-  "name": "合成物的中文名，2-6个字，要酷或可爱",
-  "look": "一句话描述外观，30字以内",
-  "ability": "一句话描述它的能力/习性，30字以内",
-  "fact": "一句有趣的冷知识/口头禅，20字以内"
-}`;
-
-  let res;
+  // 把图鉴里最近创造过的名字塞进提示词，防止换汤不换药的重名
+  let recentNames = [];
   try {
-    res = await fetch(BASE_URL + "/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: sysPrompt },
-          { role: "user", content: `请把「${a}」和「${b}」合成一个新东西。` }
-        ],
-        temperature: 1.1
-      })
-    });
-  } catch (err) {
-    throw new Error(
-      location.protocol === "file:"
-        ? "请双击 start.bat 启动本地代理后再试"
-        : "无法连接合成服务，请确认本地代理已启动或线上部署正常"
-    );
-  }
+    recentNames = [...new Set(
+      JSON.parse(localStorage.getItem("combo_dex") || "[]").map(x => x.name).filter(Boolean)
+    )].slice(0, 12);
+  } catch {}
 
-  if (!res.ok) {
-    let detail = "";
+  const buildSysPrompt = (flavorText) => `你是"万物合成炼金术师"，把两个元素炼成第三种全新事物——不是A改良版，也不是Bplus。
+
+【流派】${flavorText}，把它的气质渗进名字、外观、能力和冷知识。
+
+【要点】提取两个元素各自的特征后快速杂交："A的特征长在B的结构上"，再偷偷掺入一个与两者无关的意外意象（如潮汐、时差、余震、快递单）制造惊喜。用名词和动词写画面，禁止"神秘/梦幻/奇妙"等空词。
+禁忌：禁止"A的B"式直译命名（猫吉他）、"A身上加个B"式贴图外观、两个功能简单并列。名字要造词有梗（例：喵弦兽、霜籍舰——勿照抄）。
+
+只输出JSON（第一个字符必须是{），不要思考、不要解释、不要markdown：
+{
+  "emoji": "2~4个连续emoji：第1个是主体形象，后1~3个是环绕的氛围点缀，如 🌑☕️✨",
+  "name": "2-6字中文名，要酷或可爱",
+  "look": "外观一句话，35字内",
+  "ability": "能力/习性一句话，35字内",
+  "fact": "冷知识/口头禅一句，20字内"
+}` + (recentNames.length ? `\n名字避开已登录图鉴：${recentNames.slice(0, 8).join("、")}` : "");
+
+  let sysPrompt = buildSysPrompt(flavor);
+
+  const send = (extra) => fetch(BASE_URL + "/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: "system", content: sysPrompt },
+        { role: "user", content: `请把「${a}」和「${b}」合成一个新东西。` + (extra || "") }
+      ],
+      temperature: 1.25
+    })
+  });
+
+  // 模型偶尔会先输出思考过程导致 JSON 被截断；解析失败就换个流派重试一次
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt === 1) {
+      currentFlavor = pickFlavor();
+      sysPrompt = buildSysPrompt(currentFlavor);
+    }
+    let res;
     try {
-      const err = await res.json();
-      detail = err?.error?.message || "";
-    } catch {}
-    throw new Error("HTTP " + res.status + (detail ? "：" + detail : ""));
+      res = await send(attempt === 1 ? "（上一次回复格式不对，这次请不要思考、不要解释，只输出 JSON。）" : "");
+    } catch (err) {
+      throw new Error(
+        location.protocol === "file:"
+          ? "请双击 start.bat 启动本地代理后再试"
+          : "无法连接合成服务，请确认本地代理已启动或线上部署正常"
+      );
+    }
+
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const err = await res.json();
+        detail = err?.error?.message || "";
+      } catch {}
+      throw new Error("HTTP " + res.status + (detail ? "：" + detail : ""));
+    }
+    const data = await res.json();
+    const text = (data.choices[0].message.content || "").trim();
+    if (!text) { lastErr = new Error("AI 返回为空"); continue; }
+    try {
+      const r = extractJson(text);
+      if (!r.name && !r.look) throw new Error("AI 返回格式异常");
+      return r;
+    } catch (e) {
+      lastErr = e;
+    }
   }
-  const data = await res.json();
-  const text = data.choices[0].message.content.trim();
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("AI 返回格式异常");
-  return JSON.parse(jsonMatch[0]);
+  throw lastErr || new Error("AI 返回格式异常");
 }
 
 let lastResult = null;
@@ -576,9 +1127,33 @@ function showResult(a, b, r, rarity) {
   lastResult = r; lastRarity = rarity; lastAB = [a, b];
   const card = document.getElementById("resultCard");
   card.className = "rarity-" + rarity.key;
-  card.classList.add("rarity-" + rarity.key);
   document.getElementById("rarityBadge").textContent = rarity.name;
-  document.getElementById("resEmoji").textContent = r.emoji || "🎉";
+  const { main, extras } = parseEmojiSeq(r.emoji);
+  const resEl = document.getElementById("resEmoji");
+  const cardDm = document.getElementById("cardDanmaku");
+  if (r.img) {
+    // 图片彩蛋：卡片顶部放照片缩略图，隐藏 emoji 行，照片下挂小号弹幕
+    resEl.hidden = true;
+    let ph = document.getElementById("resPhoto");
+    if (!ph) {
+      ph = document.createElement("img");
+      ph.id = "resPhoto";
+      ph.className = "card-photo";
+      card.insertBefore(ph, card.firstChild);
+    }
+    ph.src = r.img;
+    ph.alt = r.name || "合成物";
+    ph.hidden = false;
+    startDanmaku(cardDm, danmakuPoolFor(r.img), { small: true, min: 4.2, max: 6, every: 1500 });
+  } else {
+    stopDanmaku(cardDm);
+    const ph = document.getElementById("resPhoto");
+    if (ph) { ph.hidden = true; ph.removeAttribute("src"); ph.removeAttribute("alt"); }
+    resEl.hidden = false;
+    resEl.textContent = main;
+    resEl.insertAdjacentHTML("beforeend",
+      extras.length ? `<span class="card-extras">${extras.join("")}</span>` : "");
+  }
   document.getElementById("resName").textContent = r.name || "未知生物";
   document.getElementById("resLook").textContent = r.look || "";
   document.getElementById("resAbility").textContent = r.ability || "";
@@ -590,8 +1165,9 @@ function showResult(a, b, r, rarity) {
 // 复制分享文案
 document.getElementById("shareBtn").onclick = () => {
   if (!lastResult) return;
+  const icon = lastResult.img ? "📷" : `${lastResult.emoji} `;
   const text =
-    `【万物合成实验室】${lastAB[0]} + ${lastAB[1]} = ${lastResult.emoji} ${lastResult.name}\n` +
+    `【万物合成实验室】${lastAB[0]} + ${lastAB[1]} = ${icon}${lastResult.name}\n` +
     `外观：${lastResult.look}\n能力：${lastResult.ability}\n` +
     `—— 来自「${TEAM_NAME}」的黑客松作品`;
   navigator.clipboard.writeText(text).then(() => {
